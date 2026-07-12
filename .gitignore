@@ -1,0 +1,52 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+*.egg
+.Python
+build/
+dist/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ---- Streamlit ----
+.streamlit/secrets.toml
+
+# ---- Node (Advanced_Web_App, report/pptx build scripts) ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# ---- Environment / secrets ----
+.env
+.env.*
+*.pem
+*.key
+
+# ---- OS / Editor cruft ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---- Build artifacts from report/PPT generation ----
+*.pdf.tmp
+~$*.docx
+~$*.pptx
+
+# ---- Logs ----
+*.log

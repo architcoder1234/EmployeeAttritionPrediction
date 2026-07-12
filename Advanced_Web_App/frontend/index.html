@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Attrition Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="10" fill="#C0392B"/>
+        <rect x="8" y="21" width="5" height="11" rx="1.5" fill="white"/>
+        <rect x="17" y="14" width="5" height="18" rx="1.5" fill="white"/>
+        <rect x="26" y="8" width="5" height="24" rx="1.5" fill="white"/>
+      </svg>
+      <span>Attrition Predictor</span>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-btn active" data-view="predict">🔮 Predict</button>
+      <button class="nav-btn" data-view="batch">📂 Batch Prediction</button>
+      <button class="nav-btn" data-view="insights">📊 Model Insights</button>
+      <button class="nav-btn" data-view="about">ℹ️ About</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div id="model-badge" class="model-badge">Loading model info…</div>
+      <p class="api-status" id="api-status">Checking API connection…</p>
+    </div>
+  </aside>
+
+  <!-- ============================= MAIN ============================= -->
+  <main class="main-content">
+
+    <!-- ---------- PREDICT VIEW ---------- -->
+    <section id="view-predict" class="view active">
+      <div class="hero-card">
+        <h1>📊 Employee Attrition Prediction System</h1>
+        <p>Fill in employee details across the tabs below, then predict attrition risk instantly.</p>
+        <div class="pill-row" id="hero-pills"></div>
+      </div>
+
+      <form id="predict-form" class="card form-card">
+        <div class="tabs" id="form-tabs"></div>
+        <div class="tab-panels" id="form-panels"></div>
+        <button type="submit" class="btn-primary" id="predict-btn">🔮 Predict Attrition Risk</button>
+      </form>
+
+      <div id="predict-result" class="result-section" style="display:none;">
+        <div class="card result-card" id="result-card">
+          <div class="result-label" id="result-label"></div>
+          <div class="result-pct" id="result-pct"></div>
+          <div class="result-caption">estimated probability this employee leaves within the analysis period</div>
+          <div id="context-notes" class="context-notes"></div>
+        </div>
+        <div class="card gauge-card">
+          <div class="gauge-wrap">
+            <svg viewBox="0 0 200 120" id="gauge-svg">
+              <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="18"/>
+              <path id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1E8A5B" stroke-width="18" stroke-dasharray="0 251" stroke-linecap="round"/>
+            </svg>
+            <div class="gauge-value" id="gauge-value">0%</div>
+          </div>
+        </div>
+      </div>
+      <p class="disclaimer">This is a data-driven estimate for decision support, not a guaranteed outcome.</p>
+    </section>
+
+    <!-- ---------- BATCH VIEW ---------- -->
+    <section id="view-batch" class="view">
+      <div class="hero-card">
+        <h1>📂 Batch Prediction</h1>
+        <p>Upload a CSV of multiple employees to score them all at once.</p>
+      </div>
+
+      <div class="card">
+        <p>Your CSV needs the same raw columns as the training dataset. Not sure what those are?</p>
+        <button class="btn-secondary" id="show-columns-btn">Show required columns</button>
+        <pre id="columns-list" class="columns-list" style="display:none;"></pre>
+
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="csv-input" accept=".csv" hidden>
+          <p>📄 Click to choose a CSV file, or drag one here</p>
+        </div>
+        <div id="batch-file-name"></div>
+        <button class="btn-primary" id="batch-predict-btn" style="display:none;">🔮 Score All Employees</button>
+      </div>
+
+      <div id="batch-results" class="card" style="display:none;">
+        <div class="pill-row" id="batch-summary"></div>
+        <div class="two-col" style="margin-top:1rem;">
+          <div class="chart-wrap" style="height:220px;"><canvas id="batch-risk-chart"></canvas></div>
+          <div class="chart-wrap" style="height:220px;"><canvas id="batch-histogram-chart"></canvas></div>
+        </div>
+        <div class="table-wrap">
+          <table id="batch-table"></table>
+        </div>
+        <button class="btn-secondary" id="download-results-btn">⬇️ Download Results CSV</button>
+      </div>
+    </section>
+
+    <!-- ---------- INSIGHTS VIEW ---------- -->
+    <section id="view-insights" class="view">
+      <div class="hero-card">
+        <h1>📊 Model Insights</h1>
+        <p>Why Logistic Regression was chosen over Decision Tree, Random Forest, and XGBoost.</p>
+      </div>
+
+      <div class="card">
+        <h3 class="chart-title">Model comparison</h3>
+        <div class="chart-wrap"><canvas id="metrics-chart"></canvas></div>
+        <table id="model-comparison-table" class="comparison-table"></table>
+        <p class="insight-note">
+          Models within 0.02 F1-score of each other are treated as "practically tied," and the
+          tie is broken using ROC-AUC. Decision Tree edges out Logistic Regression on raw F1
+          (0.517 vs 0.507), but Logistic Regression's ROC-AUC (0.807) is well ahead of Decision
+          Tree's (0.736) — making it the more reliable choice for deployment.
+        </p>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <h3 class="chart-title">Top 10 feature importances</h3>
+          <div class="chart-wrap" style="height:300px;"><canvas id="importance-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 class="chart-title">Attrition class distribution</h3>
+          <div class="chart-wrap" style="height:300px;"><canvas id="distribution-chart"></canvas></div>
+          <p class="insight-note">1,470 employees — 237 (16.1%) left, 1,233 (83.9%) stayed. This
+          imbalance is why SMOTE was applied before training.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ABOUT VIEW ---------- -->
+    <section id="view-about" class="view">
+      <div class="hero-card">
+        <h1>ℹ️ About this Project</h1>
+      </div>
+      <div class="card about-body">
+        <h2>Employee Attrition Prediction System</h2>
+        <p><strong>AIML Summer Internship 2026 — IIHMF, MNNIT Allahabad</strong><br>Capstone Project 4</p>
+        <p>This tool predicts whether an employee is likely to leave an organization, using
+        historical HR data and a Logistic Regression model chosen for its strong recall and
+        ROC-AUC rather than raw accuracy alone.</p>
+        <p><strong>Pipeline:</strong> data cleaning → EDA → feature engineering (TenureRatio,
+        IncomePerYearExp, PromotionGap, AvgSatisfaction) → SMOTE balancing → model comparison
+        (Logistic Regression, Decision Tree, Random Forest, XGBoost) → deployment.</p>
+        <p><strong>Author:</strong> Archit — B.Tech CSE, United College of Engineering &amp;
+        Research (UCER), Prayagraj</p>
+        <p class="tech-note">This custom frontend calls a FastAPI backend wrapping the same
+        trained model used in the Streamlit deployment — both stay in sync via a single
+        shared prediction module.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
