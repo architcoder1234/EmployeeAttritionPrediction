@@ -12,9 +12,13 @@
 ![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://employeeattritionprediction-mnit-project.streamlit.app/)
+
 *AIML Summer Internship 2026 — IIHMF, MNNIT Allahabad · Capstone Project 4*
 
 </div>
+
+> 🌐 **Live Web Application:** [employeeattritionprediction-mnit-project.streamlit.app](https://employeeattritionprediction-mnit-project.streamlit.app/)
 
 ---
 
