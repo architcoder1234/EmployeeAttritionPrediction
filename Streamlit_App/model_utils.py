@@ -81,19 +81,40 @@ def encode_row(row: dict, encoders: dict) -> dict:
     return row
 
 
-def predict_one(raw_row: dict, model, scaler, encoders, feature_names):
+def predict_one(raw_row: dict, model, scaler, encoders, feature_names, threshold: float = 0.5):
     """Runs the full pipeline (engineer -> encode -> scale -> predict) on a
-    single employee record and returns (prediction, probability)."""
+    single employee record and returns (prediction, probability).
+    `threshold` determines the cutoff probability for predicting positive (Yes/1)."""
     row = engineer_features(raw_row)
     row = encode_row(row, encoders)
     input_df = pd.DataFrame([{k: row[k] for k in feature_names}])
     input_scaled = scaler.transform(input_df)
-    prediction = model.predict(input_scaled)[0]
-    probability = model.predict_proba(input_scaled)[0][1]
-    return int(prediction), float(probability)
+    probability = float(model.predict_proba(input_scaled)[0][1])
+    prediction = int(1 if probability >= threshold else 0)
+    return prediction, probability
 
 
-def predict_batch(df: pd.DataFrame, model, scaler, encoders, feature_names):
+def explain_prediction(raw_row: dict, model, scaler, encoders, feature_names, top_n: int = 5):
+    """Computes exact linear feature contributions (log-odds impact) for the input employee.
+    Features with positive contribution push towards attrition (risk drivers).
+    Features with negative contribution pull towards retention (retention anchors)."""
+    row = engineer_features(raw_row)
+    row = encode_row(row, encoders)
+    input_df = pd.DataFrame([{k: row[k] for k in feature_names}])
+    input_scaled = scaler.transform(input_df)
+
+    if hasattr(model, "coef_"):
+        contributions = pd.Series(model.coef_[0] * input_scaled[0], index=feature_names)
+        drivers = contributions[contributions > 0].sort_values(ascending=False).head(top_n)
+        anchors = contributions[contributions < 0].sort_values(ascending=True).head(top_n)
+        return {
+            "risk_drivers": [(k, float(v)) for k, v in drivers.items()],
+            "retention_anchors": [(k, float(v)) for k, v in anchors.items()],
+        }
+    return {"risk_drivers": [], "retention_anchors": []}
+
+
+def predict_batch(df: pd.DataFrame, model, scaler, encoders, feature_names, threshold: float = 0.5):
     """Runs the full pipeline on a DataFrame of many employees (e.g. an
     uploaded CSV). Returns a copy of df with two new columns:
     'AttritionRisk' (Yes/No) and 'AttritionProbability' (0-1 float).
@@ -109,7 +130,7 @@ def predict_batch(df: pd.DataFrame, model, scaler, encoders, feature_names):
     for _, r in df.iterrows():
         row = r.to_dict()
         try:
-            pred, prob = predict_one(row, model, scaler, encoders, feature_names)
+            pred, prob = predict_one(row, model, scaler, encoders, feature_names, threshold=threshold)
             results.append((("Yes" if pred == 1 else "No"), prob, None))
         except Exception as e:
             results.append((None, None, str(e)))
@@ -119,3 +140,4 @@ def predict_batch(df: pd.DataFrame, model, scaler, encoders, feature_names):
     out["AttritionProbability"] = [r[1] for r in results]
     out["Error"] = [r[2] for r in results]
     return out
+

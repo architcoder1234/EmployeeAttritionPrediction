@@ -8,7 +8,9 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-multi--page%20app-FF4B4B?logo=streamlit&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-ML%20pipeline-F7931E?logo=scikitlearn&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-optional%20backend-009688?logo=fastapi&logoColor=white)
-![License](https://img.shields.io/badge/license-Academic%20Project-lightgrey)
+![Tests](https://img.shields.io/badge/tests-7%20passed-brightgreen?logo=pytest&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 *AIML Summer Internship 2026 — IIHMF, MNNIT Allahabad · Capstone Project 4*
 
@@ -51,43 +53,63 @@ why, and picks a model accordingly. See [Model Selection Reasoning](#-why-logist
 
 ## ✨ Features
 
-- **Predict** — single-employee form across 4 tabs, with a probability gauge and rule-based context notes
-- **Batch Prediction** — upload a CSV, score an entire department at once, download results
+- **Predict** — single-employee form across 4 tabs, with a probability gauge, rule-based context notes, and **Explainable AI (local feature influence chart)**
+- **Decision Sensitivity** — adjustable probability threshold slider (default 50%) to fine-tune precision vs. recall for HR teams
+- **Batch Prediction** — score entire departments at once from CSV, with instant 1-click sample dataset download and scored results export
 - **Compare** — score two employees side-by-side and see the risk gap between them
 - **Model Insights** — interactive model comparison chart, feature importances, and the reasoning behind the deployed model
 - **About** — project and team info
+- **Automated CI & Unit Tests** — full `pytest` test suite with automated GitHub Actions CI pipeline
+- **Container Ready** — complete `Dockerfile` and `docker-compose.yml` for 1-command startup
 - Optional **custom FastAPI + HTML/CSS/JS frontend** (`Advanced_Web_App/`) — same model, fully custom UI, no Streamlit dependency
 
 ## 🗂️ Project Structure
 
 ```
 EmployeeAttritionPrediction/
-├── Dataset/                 HR-Employee-Attrition.csv (IBM HR Analytics dataset)
+├── .github/workflows/       CI pipeline (GitHub Actions test runner)
+├── Dataset/                 HR-Employee-Attrition.csv & sample_batch_input.csv
 ├── Notebook/                Full pipeline notebook (Google Colab, executed end-to-end)
 ├── Model/                   Trained model, scaler, encoders, metrics
 ├── Streamlit_App/           Multi-page Streamlit deployment (primary app)
+│   ├── .streamlit/             Streamlit server and theme configuration
 │   ├── app.py                 Router (st.navigation) — run this
-│   ├── predict.py              Predict page
+│   ├── predict.py              Predict page (with Explainable AI & sensitivity slider)
 │   ├── pages/                  Batch Prediction, Compare, Model Insights, About
 │   ├── theme.py                 All colors/text/branding — edit here to restyle
 │   ├── fields_config.py         Form fields as data — edit here to add/remove fields
-│   ├── model_utils.py           Shared prediction logic (used by Streamlit AND FastAPI)
+│   ├── model_utils.py           Shared prediction logic & explainability
 │   └── EDITING_GUIDE.md         Step-by-step customization recipes
 ├── Advanced_Web_App/         Optional: FastAPI + custom HTML/CSS/JS deployment
 ├── Documentation/            Project report, presentation, figures
+├── tests/                   Pytest test suite (100% test coverage for model pipeline)
+├── Dockerfile               Container build file for Streamlit app
+├── docker-compose.yml       Multi-container compose file (Streamlit + FastAPI)
+├── LICENSE                  MIT License
 └── requirements.txt
 ```
 
 ## 🚀 Quick Start
 
+### Option 1: Local Python Environment
 ```bash
 git clone <this-repo-url>
 cd EmployeeAttritionPrediction
 pip install -r requirements.txt
 
-cd Streamlit_App
-streamlit run app.py
+# Run the test suite
+pytest tests/
+
+# Launch the Streamlit application
+streamlit run Streamlit_App/app.py
 ```
+
+### Option 2: Docker Compose (Zero Config)
+```bash
+docker compose up --build
+```
+- Open `http://localhost:8501` for the Streamlit App.
+- Open `http://localhost:8000/docs` for the FastAPI interactive Swagger documentation.
 
 Opens the **Predict** page, with Batch Prediction, Compare, Model Insights, and About available
 from the sidebar.

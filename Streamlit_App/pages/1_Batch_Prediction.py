@@ -53,10 +53,24 @@ template_df = pd.DataFrame([{
 }])
 csv_buf = io.StringIO()
 template_df.to_csv(csv_buf, index=False)
-st.download_button(
-    "⬇️ Download CSV template", csv_buf.getvalue(),
-    file_name="batch_prediction_template.csv", mime="text/csv",
-)
+col_a, col_b = st.columns(2)
+with col_a:
+    st.download_button(
+        "⬇️ Download CSV template (1 row)", csv_buf.getvalue(),
+        file_name="batch_prediction_template.csv", mime="text/csv",
+        use_container_width=True,
+    )
+
+sample_csv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Dataset", "sample_batch_input.csv")
+if os.path.exists(sample_csv_path):
+    with open(sample_csv_path, "r", encoding="utf-8") as f:
+        sample_csv_data = f.read()
+    with col_b:
+        st.download_button(
+            "⬇️ Download sample dataset (10 employees)", sample_csv_data,
+            file_name="sample_employees_batch.csv", mime="text/csv",
+            use_container_width=True,
+        )
 
 st.markdown("---")
 

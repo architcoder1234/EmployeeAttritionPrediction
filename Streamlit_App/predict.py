@@ -18,7 +18,7 @@ import plotly.graph_objects as go
 
 import theme
 from fields_config import FORM_TABS, CONTEXT_RULES
-from model_utils import load_artifacts, engineer_features, predict_one
+from model_utils import load_artifacts, engineer_features, predict_one, explain_prediction
 
 st.markdown(theme.build_css(), unsafe_allow_html=True)
 
@@ -46,6 +46,16 @@ with st.sidebar:
     st.metric("F1-Score", f"{m['f1']:.3f}")
     st.metric("ROC-AUC", f"{m['roc_auc']:.3f}")
     st.metric("Recall", f"{m['recall']:.3f}")
+    st.markdown("---")
+    st.markdown("### Decision Sensitivity")
+    threshold = st.slider(
+        "Risk Cutoff Threshold",
+        min_value=0.20,
+        max_value=0.80,
+        value=0.50,
+        step=0.05,
+        help="Probability threshold to classify an employee as High Risk. Lower values catch more at-risk employees (higher recall) at the cost of more false alarms.",
+    )
     st.markdown("---")
     st.caption(theme.SIDEBAR_MODEL_NOTE)
 
@@ -132,7 +142,7 @@ if submitted:
     with st.spinner("Scoring employee..."):
         raw_for_rules = engineer_features(values)
         raw_for_rules["OverTime_label"] = values["OverTime"]
-        prediction, probability = predict_one(values, model, scaler, encoders, feature_names)
+        prediction, probability = predict_one(values, model, scaler, encoders, feature_names, threshold=threshold)
 
     risk_pct = probability * 100
     card_class = "high" if prediction == 1 else "low"
@@ -140,7 +150,7 @@ if submitted:
     risk_color = theme.RED if prediction == 1 else theme.GREEN
 
     st.toast(
-        f"{'⚠️ High' if prediction == 1 else '✅ Low'} risk — {risk_pct:.1f}%",
+        f"{'⚠️ High' if prediction == 1 else '✅ Low'} risk — {risk_pct:.1f}% (threshold: {int(threshold*100)}%)",
         icon="⚠️" if prediction == 1 else "✅",
     )
 
@@ -163,7 +173,7 @@ if submitted:
             <div style="font-size:1.4rem; font-weight:700; color:{risk_color};">{risk_label}</div>
             <div style="font-size:2.6rem; font-weight:800; color:white; margin-top:0.3rem;">{risk_pct:.1f}%</div>
             <div style="color:{theme.ICE}; font-size:0.9rem; margin-top:0.4rem;">
-                estimated probability this employee leaves within the analysis period
+                estimated probability this employee leaves (decision threshold: {int(threshold*100)}%)
             </div>
         </div>
         """), unsafe_allow_html=True)
@@ -191,6 +201,11 @@ if submitted:
                     {"range": [40, 70], "color": theme.GAUGE_ZONE_MED},
                     {"range": [70, 100], "color": theme.GAUGE_ZONE_HIGH},
                 ],
+                "threshold": {
+                    "line": {"color": "white", "width": 4},
+                    "thickness": 0.8,
+                    "value": threshold * 100,
+                },
             },
         ))
         fig.update_layout(
@@ -198,10 +213,43 @@ if submitted:
             paper_bgcolor="rgba(0,0,0,0)", font={"color": "white"},
             transition={"duration": 700, "easing": "cubic-in-out"},
         )
-        # Stable key so the same chart component is reused across reruns —
-        # needed for Plotly's built-in transition to actually animate the
-        # needle/number instead of just popping to the new value instantly.
         st.plotly_chart(fig, width="stretch", key="risk_gauge_chart")
+
+    # Local Explainability (Feature Contribution Analysis)
+    exp = explain_prediction(values, model, scaler, encoders, feature_names, top_n=4)
+    drivers = exp.get("risk_drivers", [])
+    anchors = exp.get("retention_anchors", [])
+
+    if drivers or anchors:
+        st.markdown("---")
+        st.markdown("### 🔬 Explainable AI: Feature Influence Breakdown")
+        st.caption("How this specific employee's attributes pushed the model towards attrition vs. retention (log-odds impact):")
+
+        exp_cols, exp_vals, exp_colors = [], [], []
+        for feat, val in reversed(anchors):
+            exp_cols.append(f"{feat} (Retention)")
+            exp_vals.append(val)
+            exp_colors.append(theme.GREEN)
+        for feat, val in drivers:
+            exp_cols.append(f"{feat} (Risk)")
+            exp_vals.append(val)
+            exp_colors.append(theme.RED)
+
+        exp_fig = go.Figure(go.Bar(
+            x=exp_vals,
+            y=exp_cols,
+            orientation="h",
+            marker=dict(color=exp_colors),
+        ))
+        exp_fig.update_layout(
+            height=280,
+            margin=dict(l=20, r=20, t=10, b=20),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(title="Log-Odds Contribution (< 0 Stay, > 0 Leave)", color="white", gridcolor="rgba(255,255,255,0.1)"),
+            yaxis=dict(color="white"),
+        )
+        st.plotly_chart(exp_fig, width="stretch", key="explainability_chart")
 
     st.markdown(theme.clean_html("""
     <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
